@@ -1,0 +1,63 @@
+QWidget#centralWidget {background-color: #212121;}
+QLabel {background-color: #FF9100; color: #212121;}
+QLabel#label {background-color: #212121; color: #FF9100;}
+QLabel#label_2 {background-color: #212121; color: #FF9100;}
+QLabel#label_3 {background-color: #212121; color: #FF9100;}
+QLCDNumber {background-color: #212121; color: #FF9100;}
+QLineEdit {color: #FF9100; background-color: #212121;}
+QPushButton {border-style: outset; background-color:  #EEEEEE;}
+QPushButton:pressed {background-color: #616161}
+QLabel#FA {background-color: #FF5722;}
+QLabel#SS {background-color: #FF5722;}
+
+QDateEdit
+{   color: #FF9100;
+    border : 0px;
+    background-color: #212121;
+    border-color: #FF9100;
+    border-width: 0px;
+    border-style: solid;
+}
+QComboBox#chooseSerial
+{
+    color:#FF9100;
+    background-color:#212121;
+    border-color: #FF9100;
+    border-width: 0px;
+    border-style: solid;
+}
+QComboBox::drop-down#chooseSerial
+{
+    width: 20px;
+    border: 1px;
+    border-color:#FF9100;
+    border-left-style:solid;
+    border-top-style: solid;
+    border-bottom-style: solid;
+    border-right-style: solid;
+}
+QComboBox#dateEdit
+{
+    color:#FF9100;
+    background-color:#212121;
+    border-color: #FF9100;
+    border-width: 0px;
+    border-style: solid;
+}
+
+QComboBox::drop-down#dateEdit
+{
+    width: 20px;
+    border: 1px;
+    border-color:#FF9100;
+    border-left-style:solid;
+    border-top-style: solid;
+    border-bottom-style: solid;
+    border-right-style: solid;
+}
+QComboBox::down-arrow#dateEdit
+{
+    image: url(C:/Qt/Qt5.6.1/Icons/arrow_up.png);
+    width: 16px;
+    height: 16px;
+}

@@ -1,0 +1,10 @@
+QWidget#centralWidget {background-color: #212121;}
+QLabel {background-color: #FF9100; color: #212121;}
+QLabel#label {background-color: #212121; color: #FF9100;}
+QLabel#label_2 {background-color: #212121; color: #FF9100;}
+QLabel#label_3 {background-color: #212121; color: #FF9100;}
+QLCDNumber {background-color: #212121; color: #FF9100;}
+QPushButton {border-style: outset; background-color:  #EEEEEE;}
+QPushButton:pressed {background-color: #616161}
+QLabel#FA {background-color: #FF5722;}
+QLabel#SS {background-color: #FF5722;}
