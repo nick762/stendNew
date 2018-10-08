@@ -28,11 +28,13 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(thread_New, SIGNAL(finished()), PortNew, SLOT(deleteLater()));
     connect(PortNew, SIGNAL(finished_Port()), thread_New, SLOT(deleteLater()));
     connect(this,SIGNAL(savesettings(QString)),PortNew,SLOT(Write_Settings_Port(QString)));
-    connect(ui->pushButton, SIGNAL(clicked()),PortNew,SLOT(ConnectPort()));
-    //connect(ui->BtnDisconect, SIGNAL(clicked()),PortNew,SLOT(DisconnectPort()));
+    connect(ui->OK, SIGNAL(clicked()),PortNew,SLOT(ConnectPort()));
+    connect(ui->Start, SIGNAL(clicked()),PortNew,SLOT(DisconnectPort()));
     connect(PortNew, SIGNAL(outPort(QString)), this, SLOT(read(QString)));
     connect(this,SIGNAL(writeData(QByteArray)),PortNew,SLOT(WriteToPort(QByteArray)));
+    connect(ui->SerialFind, SIGNAL(clicked()),this,SLOT(serialFind()));
     thread_New->start();
+    qApp->installEventFilter(this);
 }
 
 MainWindow::~MainWindow(){
@@ -42,30 +44,30 @@ MainWindow::~MainWindow(){
 
 void MainWindow::serialFind(){
     QSerialPortInfo info;
-    foreach (info ,QSerialPortInfo::availablePorts()) {
+    ui->chooseSerial->clear();
+    foreach (info ,QSerialPortInfo::availablePorts()) {        
         ui->chooseSerial->addItem(info.portName());
         qDebug() << info.portName();
     }
+    qDebug()<<serial;
 }
 
-void MainWindow::on_pushButton_clicked()
+void MainWindow::on_OK_clicked()
 {
     if(serial==true){
         savesettings(ui->chooseSerial->currentText());
         ui->Discharge->setEnabled(true);
         ui->Charge->setEnabled(true);
-        ui->cycling->setEnabled(true);
-        ui->graph->setEnabled(true);
+        //ui->cycling->setEnabled(true);
         ui->seal->setEnabled(true);
         ui->unseal->setEnabled(true);
         ui->fullAccess->setEnabled(true);
         ui->setSerial->setEnabled(true);
         ui->setDate->setEnabled(true);
-        ui->graph->setEnabled(true);
+        ui->Start->setEnabled(true);
+        //ui->graph->setEnabled(true);
         serial=false;
-    }//else{
-       // writeData("start");
-    //}
+    }
 }
 
 void MainWindow::read(QString data)
@@ -77,64 +79,210 @@ void MainWindow::read(QString data)
     }
     if(!dates.isEmpty()){
         emit hasData(dates);
+        if (dates.contains("&")){
+            qDebug()<<"oj";
+        }
+        dates[0].remove('@');
+        dates[14].remove('#');
         dates[14].truncate(1);
-        if((dates[0]!=dates[1])&&(dates[0]!=dates[3])&&(dates[0]!=dates[4])&&(dates[0]!=dates[5])&&(dates[0]!=dates[6])&&(dates[0]!=dates[7])){
-            ui->Vol->display(dates[0]);
-        }else{
-            qDebug() << "Voltage: " << dates[0] <<endl;
-        }
-        if((dates[1]!=dates[0])&&(dates[1]!=dates[3])&&(dates[1]!=dates[4])&&(dates[1]!=dates[5])&&(dates[1]!=dates[6])&&(dates[1]!=dates[7])){
-            ui->Cur->display(dates[1]);
-        }else{
-            qDebug() << "Current: " << dates[1] <<endl;
-        }
+        ui->Vol->display(dates[0]);
+        ui->Cur->display(dates[1]);
         ui->Temp->display(dates[2]);
         ui->Cap->display(dates[3]);
         ui->Cell1_V->display(dates[4]);
         ui->Cell2_V->display(dates[5]);
         ui->Cell3_V->display(dates[6]);
         ui->Cell4_V->display(dates[7]);
+        bool ok=true;
 
+
+        //Обновление серийного номера
         if(ser == true){
-            //qDebug()<<"serial true";
             ui->serial->setText(dates[8]);
-            ser=false;
+            ser = false;
+        }
+        if((dates[8]==rest)&&(ser==false)){
+            ui->serial->setText(dates[8]);
+            rest = "";
+            ser = false;
         }
 
+        //Обновление даты
+        if(dat == true){
+            intToYear(dates[10]);
+            ui->dateEdit->setDate(aDate);
+            dat = false;
+        }
+        if((dates[10].toInt(&ok)==cDate)&&(dat==false)){
+            intToYear(dates[10]);
+            ui->dateEdit->setDate(aDate);
+            cDate = 0;
+            dat = false;
+        }
+
+        //Статус
         if((dates[9]=="1")||(dates[9]=="2")){
-            //qDebug()<<"blocked";
             ui->FA->setStyleSheet("QLabel {background: #FF5722}");
             ui->SS->setStyleSheet("QLabel {background: #FF5722}");
         }else{
             status(decToBin(wordToByte(dates[9]))[1]);
         }
 
-        if(dat == true){
-            //qDebug()<<"date true";
-            intToYear(dates[10]);
-            dat = false;
+        qDebug()<<"discharge "<<d_checked;
+        qDebug()<<"charge "<<c_checked;
+        if(d_checked==true){
+            if((dates[14]=="0")&&(dates[1].toInt(&ok)>=0)){
+                ui->Discharge->setText("Разряд");
+                ui->Status->setStyleSheet("QLabel {background-color : #FF9100; color: #212121}");
+                ui->Status->setText("Состояние");
+                ui->Charge->setEnabled(true);
+            }
         }
-
-        if((dates[11]=="1")&&(dates[12]=="0")){
-            ui->Status->setStyleSheet("QLabel {background-color : #00E676;}");
-            ui->Status->setText("Идет заряд");
-        }else if((dates[11]=="0")&&(dates[12]=="1")){
-            ui->Status->setStyleSheet("QLabel {background-color : #FF5722;}");
-            ui->Status->setText("Идет разряд");
-        }else if ((dates[11]=="0")&&(dates[12]=="0")&&(dates[13]=="0")&&(dates[14]=="0")){
-            ui->Status->setStyleSheet("QLabel {background-color : #FF9100; color: #212121}");
-            ui->Status->setText("Состояние");
-        }
-
-        if((dates[13]=="1")&&(dates[14]=="0")){
-            ui->Status->setText("Идет заряд");
-            ui->Status->setStyleSheet("QLabel {background-color : #00E676;}");
-        }else if((dates[13]=="0")&&(dates[14]=="1")){
-            ui->Status->setText("Идет разряд");
-            ui->Status->setStyleSheet("QLabel {background-color : #FF5722;}");
+        if(c_checked==true){
+            if(dates[13]=="0"){
+                ui->Charge->setText("Заряд");
+                ui->Status->setStyleSheet("QLabel {background-color : #FF9100; color: #212121}");
+                ui->Status->setText("Состояние");
+                ui->Discharge->setEnabled(true);
+            }else if(dates[13]=="1"&&dates[14]=="0"){
+                ui->Charge->setText("Остановить заряд");
+                ui->Status->setStyleSheet("QLabel {background-color : #FF5722;}");
+                ui->Status->setText("Идет заряд");
+            }
         }
     }
-   dates.clear();
+}
+
+void MainWindow::on_graph_clicked()
+{
+    QJsonDocument jDoc;
+    QJsonObject jOb;
+    QVector<double> vol,time,current,temperature;
+    QString in;
+    QString str = QFileDialog::getOpenFileName(0, "Open Dialog", QApplication::applicationDirPath()+"/log/", "*.json");
+    if(!str.isNull()){
+        QFile file(str);
+        if(file.open(QIODevice::ReadOnly|QIODevice::Text)){
+            while(!file.atEnd()){
+                in = file.readLine();
+                jDoc = QJsonDocument::fromJson(in.toUtf8());
+                jOb = jDoc.object();
+                vol.append(jOb.value(QString("Voltage")).toString().toDouble());
+                time.append(jOb.value(QString("Time")).toDouble());
+                current.append(jOb.value(QString("Current")).toString().toDouble());
+                temperature.append(jOb.value(QString("Temperature")).toString().toDouble());
+            }
+        }
+        file.close();
+    }else{return;}
+
+    QRect wRect(QPoint(150,150), QSize(1000,750));
+    widget = new QWidget();
+    widget->setGeometry(wRect);
+
+    QPushButton *pButton = new QPushButton(widget);
+    connect(pButton, SIGNAL(clicked()), this, SLOT(print()));
+    QPushButton *sButton = new QPushButton(widget);
+    connect(sButton, SIGNAL(clicked()), this, SLOT(snapShot()));
+    QFont font = widget->font();
+    font.setPointSize(12);
+    pButton->setGeometry(10,700,100,50);
+    pButton->setText("Печать");
+    pButton->setFont(font);
+    sButton->setGeometry(110,700,100,50);
+    sButton->setText("Сохранить");
+    sButton->setFont(font);
+
+    customPlot = new QCustomPlot(widget);
+    customPlot->resize(1000,350);
+    customPlot->move(0,0);
+
+    customPlot->addGraph(customPlot->xAxis, customPlot->yAxis);
+    customPlot->graph(0)->setPen((QColor(Qt::red)));
+    customPlot->graph(0)->setData(time,vol);
+    customPlot->graph(0)->setAntialiasedFill(false);
+
+    customPlot->setInteraction(QCP::iRangeZoom,true);
+    customPlot->setInteraction(QCP::iRangeDrag, true);
+    customPlot->axisRect()->setRangeDrag(Qt::Horizontal|Qt::Vertical);
+    customPlot->axisRect()->setRangeZoom(Qt::Horizontal|Qt::Vertical);
+    customPlot->axisRect()->setupFullAxesBox();
+
+    customPlot->xAxis->setLabel("Время");
+    customPlot->xAxis->setTickLabelType(QCPAxis::ltDateTime);
+    customPlot->xAxis->setDateTimeFormat("hh:mm:ss.zzz");
+    customPlot->xAxis->setRange(minElem(time),maxElem(time));
+
+    customPlot->yAxis->setAutoTickStep(true);
+    customPlot->yAxis->setAutoTicks(true);
+    customPlot->yAxis->setLabel("Напряжение");
+    customPlot->yAxis->setRange(minElem(vol),maxElem(vol)+200);
+
+    customPlot->rescaleAxes();
+    customPlot->replot();
+
+
+    customPlot2 = new QCustomPlot(widget);
+    customPlot2->resize(1000,350);
+    customPlot2->move(0,350);
+    customPlot2->addGraph(customPlot2->xAxis, customPlot2->yAxis);
+
+    customPlot2->graph(0)->setPen((QColor(Qt::blue)));
+    customPlot2->graph(0)->setData(time,current);
+    customPlot2->graph(0)->setAntialiasedFill(false);
+
+    customPlot2->setInteraction(QCP::iRangeZoom,true);
+    customPlot2->setInteraction(QCP::iRangeDrag, true);
+    customPlot2->axisRect()->setRangeDrag(Qt::Horizontal|Qt::Vertical);
+    customPlot2->axisRect()->setRangeZoom(Qt::Horizontal|Qt::Vertical);
+    customPlot2->axisRect()->setupFullAxesBox();
+
+    customPlot2->xAxis->setLabel("Время");
+    customPlot2->xAxis->setTickLabelType(QCPAxis::ltDateTime);
+    customPlot2->xAxis->setDateTimeFormat("hh:mm:ss.zzz");
+    customPlot2->xAxis->setRange(minElem(time),maxElem(time));
+
+    customPlot2->yAxis->setAutoTickStep(true);
+    customPlot2->yAxis->setAutoTicks(true);
+    customPlot2->yAxis->setLabel("Ток");
+    customPlot2->yAxis->setRange(minElem(current),maxElem(current)+200);
+
+    customPlot2->rescaleAxes();
+    customPlot2->replot();
+    widget->show();
+}
+
+void MainWindow::print()
+{
+    QPrinter printer;
+    QPrintDialog *dialog = new QPrintDialog(&printer, this);
+    dialog->setWindowTitle(tr("Print Document"));
+
+    QPainter painter;
+
+    printer.setOrientation(QPrinter::Landscape);
+    printer.setPaperSize(QPrinter::A4);
+    printer.setColorMode(QPrinter::GrayScale);
+
+    /*double xscale = printer.pageRect().width()/double(widget->width());
+    double yscale = printer.pageRect().height()/double(widget->height());
+    double scale = qMin(xscale, yscale);*/
+
+    painter.begin(&printer);
+
+    widget->render(&painter);
+}
+
+void MainWindow::snapShot()
+{
+    QScreen *screen = QGuiApplication::primaryScreen();
+    if (const QWindow *window = windowHandle())
+            screen = window->screen();
+    if (!screen)
+        return;
+    customPlot->savePng(QApplication::applicationDirPath()+"/"+"voltage.png");
+    customPlot2->savePng(QApplication::applicationDirPath()+"/"+"current.png");
+
 }
 
 void MainWindow::on_cycling_clicked()
@@ -150,110 +298,22 @@ void MainWindow::on_cycling_clicked()
     }
 }
 
-void MainWindow::on_graph_clicked()
-{
-    QJsonDocument jDoc;
-    QJsonObject jOb;
-    QVector<double> vol,time,current,temperature;
-    QString in;
-    //QString str = QFileDialog::getOpenFileName(0, "Open Dialog", "C:/Users/zhdanovnv/Documents/stend/", "*.json");
-    QString str = QFileDialog::getOpenFileName(0, "Open Dialog", QApplication::applicationDirPath()+"/log/", "*.json");
-    if(!str.isNull()){
-    QFile file(str);
-    if(file.open(QIODevice::ReadOnly|QIODevice::Text)){
-        while(!file.atEnd()){
-            in = file.readLine();
-            jDoc = QJsonDocument::fromJson(in.toUtf8());
-            jOb = jDoc.object();
-            vol.append(jOb.value(QString("Voltage")).toString().toDouble());
-            time.append(jOb.value(QString("Time")).toDouble());
-            current.append(jOb.value(QString("Current")).toString().toDouble());
-            temperature.append(jOb.value(QString("Temperature")).toString().toDouble());
-        }
-    }
-    file.close();
-
-    widget = new QWidget;
-    widget->resize(1000,350);
-
-    customPlot = new QCustomPlot(widget);
-    customPlot->resize(1000,350);
-    customPlot->move(0,0);
-
-    graphic = new QCPGraph(customPlot->xAxis, customPlot->yAxis);
-    customPlot->addPlottable(graphic);
-    graphic->setPen(QPen(QColor(Qt::red)));;
-
-    customPlot->setInteraction(QCP::iRangeZoom,true);
-    customPlot->setInteraction(QCP::iRangeDrag, true);
-    customPlot->axisRect()->setRangeDrag(Qt::Horizontal|Qt::Vertical);
-    customPlot->axisRect()->setRangeZoom(Qt::Horizontal|Qt::Vertical);
-    customPlot->axisRect()->setupFullAxesBox();
-
-    customPlot->graph(0)->setData(time,vol);
-    customPlot->graph(0)->setAntialiasedFill(false);
-
-    customPlot->yAxis->setAutoTickStep(true);
-    customPlot->yAxis->setAutoTicks(true);
-    customPlot->xAxis->setLabel("Time");
-    customPlot->xAxis->setTickLabelType(QCPAxis::ltDateTime);
-    customPlot->xAxis->setDateTimeFormat("hh:mm:ss.zzz");
-    customPlot->xAxis->setRange(minElem(time),maxElem(time));
-
-    customPlot->yAxis->setLabel("Voltage");
-    customPlot->yAxis->setRange(minElem(vol),maxElem(vol)+200);
-
-    customPlot->rescaleAxes();
-    customPlot->replot();
-    widget->show();
-}
-}
-
-void MainWindow::on_Charge_clicked()
-{
-    if(c_checked==true){
-        ui->Charge->setChecked(false);
-        ui->Discharge->setChecked(true);
-        c_checked=false;
-        d_checked=false;
-    }else{
-        ui->Discharge->setChecked(false);
-        c_checked=true;
-        d_checked=false;
-    }
-        writeData("c");
-}
-
-void MainWindow::on_Discharge_clicked()
-{
-    if(d_checked==true){
-        ui->Discharge->setChecked(false);
-        ui->Charge->setChecked(false);
-        d_checked=false;
-        c_checked=false;
-    }else{
-        ui->Charge->setChecked(false);
-        d_checked=true;
-        c_checked=false;
-    }
-        writeData("d");
-}
-
 void MainWindow::on_setSerial_clicked()
 {
-    QString res = "s"+ui->serial->text();
+    rest = ui->serial->text();
+    QString res = "s"+rest;
     writeData(res.toLatin1());
     QFile fileName(QApplication::applicationDirPath()+"/log/"+ui->serial->text()+".json");
     fileName.open(QIODevice::WriteOnly);
     fileName.close();
     qDebug()<<res;
-    ser=true;
+    ser = true;
 }
 
 void MainWindow::on_setDate_clicked()
 {
     uint16_t year,month,day;
-    uint16_t cDate;
+    //uint16_t cDate;
     year = ui->dateEdit->date().year();
     month = ui->dateEdit->date().month();
     day = ui->dateEdit->date().day();
@@ -262,14 +322,13 @@ void MainWindow::on_setDate_clicked()
     cDate = year+month+day;
     QString res = "e"+QString::number(cDate);
     writeData(res.toLatin1());
-    //qDebug()<<res;
     dat = true;
     connect(this, &MainWindow::hasData,this, &MainWindow::toFile);
 }
 
 void MainWindow::intToYear(QString date){
     uint16_t year,month,day,fdat;
-    QDate aDate;
+    //QDate aDate;
     fdat = date.toInt();
     year = fdat >> 9;
     year = ((year << 9)/512)+1980;
@@ -279,48 +338,33 @@ void MainWindow::intToYear(QString date){
     day = fdat << 11;
     day=day >> 11;
     aDate.setDate(year,month,day);
-    qDebug() << year << "/" << month << "/" << day << endl << aDate;
-    ui->dateEdit->setDate(aDate);
-    //dat = true;
+    //qDebug() << year << "/" << month << "/" << day << endl << aDate;
+    //ui->dateEdit->setDate(aDate);
+    dat = true;
 }
-
-/*void MainWindow::createFile(QList<QString> value){
-    if(hasFile==true){
-        QFile file(QApplication::applicationDirPath()+"/"+value[8]+".json");
-        file.open(QIODevice::WriteOnly);
-        file.close;
-        hasFile==false;
-    }
-}*/
 
 void MainWindow::toFile(QList<QString> value)
 {
     QtJson::JsonObject setData;
+    int n = 0;
     QByteArray status;
-    if((value[0]!=value[1])&&(value[0]!=value[3])&&(value[0]!=value[4])&&(value[0]!=value[5])&&(value[0]!=value[6])&&(value[0]!=value[7])&&(value[0]!="65535")&&(value[0]!="0")){
+    if(n==3){
         setData["Voltage"] = value[0];
+        setData["Current"] = value[1];
+        setData["Temperature"] = value[2];
+        setData["Capacity"] = value[3];
+        setData["Time"] = QDateTime::currentDateTime().toTime_t();
+        setData["S/N"] = value[8];
+        status = QtJson::serialize(setData);
+        QFile file(QApplication::applicationDirPath()+"/log/"+value[8]+".json");
+        if(file.exists()){
+            if(file.open(QIODevice::Append|QIODevice::Text)){
+                QTextStream out(&file);
+                out<<status<<"\r\n";
+                file.close();
+            }
+        }
     }
-    setData["Current"] = value[1];
-    setData["Temperature"] = value[2];
-    setData["Capacity"] = value[3];
-    setData["Time"] = QDateTime::currentDateTime().toTime_t();
-    setData["S/N"] = value[8];
-    status = QtJson::serialize(setData);
-    QFile file(QApplication::applicationDirPath()+"/log/"+value[8]+".json");
-    if(file.exists()){
-        //if(file.open(QIODevice::WriteOnly|QIODevice::Text)){
-        if(file.open(QIODevice::Append|QIODevice::Text)){
-            QTextStream out(&file);
-            out<<status<<"\r\n";
-            file.close();
-        }
-    }/*else{
-        if(file.open(QIODevice::Append|QIODevice::Text)){
-            QTextStream out(&file);
-            out<<status<<"\r\n";
-            file.close();
-        }
-    }*/
 }
 
 double MainWindow::minElem(QVector<double> input)
@@ -349,7 +393,7 @@ double MainWindow::maxElem(QVector<double> input)
     return input[m];
 }
 
-void MainWindow::Print(QString  str)
+void MainWindow::Print(QString str)
 {
     qDebug()<<str<<endl;
 }
@@ -389,6 +433,44 @@ void MainWindow::status(QString stat){
     }
 }
 
+void MainWindow::on_Charge_clicked()
+{
+    if(c_checked == true){
+        writeData("c");        
+        ui->Charge->setText("Заряд");
+        ui->Status->setStyleSheet("QLabel {background-color : #FF9100; color: #212121}");
+        ui->Status->setText("Состояние");
+        ui->Discharge->setEnabled(true);
+        c_checked = false;
+    }else{
+        writeData("c");
+        ui->Charge->setText("Остановить заряд");
+        ui->Status->setStyleSheet("QLabel {background-color : #FF5722;}");
+        ui->Status->setText("Идет заряд");
+        ui->Discharge->setEnabled(false);
+        c_checked = true;
+    }
+}
+
+void MainWindow::on_Discharge_clicked()
+{
+    if(d_checked == true){
+        writeData("d");
+        ui->Discharge->setText("Разряд");
+        ui->Status->setStyleSheet("QLabel {background-color : #FF9100; color: #212121}");
+        ui->Status->setText("Состояние");
+        ui->Charge->setEnabled(true);
+        d_checked = false;        
+    }else{
+        writeData("d");
+        ui->Discharge->setText("Остановить разряд");
+        ui->Status->setStyleSheet("QLabel {background-color : #FF5722;}");
+        ui->Status->setText("Идет разряд");
+        ui->Charge->setEnabled(false);
+        d_checked = true;
+    }
+}
+
 void MainWindow::on_seal_clicked()
 {
     writeData("l");
@@ -402,4 +484,35 @@ void MainWindow::on_unseal_clicked()
 void MainWindow::on_fullAccess_clicked()
 {
     writeData("f");
+}
+
+/*void MainWindow::on_SerialFind_clicked()
+{
+    serialFind();
+}*/
+
+
+void MainWindow::on_Start_clicked()
+{
+    /*if(ui->Start->text()=="Старт"){
+        ui->Start->setText("Стоп");
+        writeData("x");
+    }*/
+    ui->Vol->display(0);
+    ui->Cur->display(0);
+    ui->Temp->display(0);
+    ui->Cap->display(0);
+    ui->Cell1_V->display(0);
+    ui->Cell2_V->display(0);
+    writeData("x");
+    serial = true;
+    ui->Start->setEnabled(false);
+    ui->Charge->setEnabled(false);
+    ui->Discharge->setEnabled(false);
+    ui->fullAccess->setEnabled(false);
+    ui->unseal->setEnabled(false);
+    ui->seal->setEnabled(false);
+    ui->setDate->setEnabled(false);
+    ui->setSerial->setEnabled(false);
+
 }

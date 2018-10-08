@@ -7,6 +7,7 @@
 QT       += core gui
 QT       += serialport
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
+DESTDIR = bin
 
 TARGET = bat
 TEMPLATE = app

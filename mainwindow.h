@@ -15,6 +15,7 @@
 #include "json.h"
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QPainter>
 
 namespace Ui {
 class MainWindow;
@@ -32,7 +33,7 @@ private slots:
     void on_Charge_clicked();
     void on_Discharge_clicked();
     void serialFind();
-    void on_pushButton_clicked();
+    void on_OK_clicked();
     void read(QString data);
     void intToYear(QString date);
     void on_cycling_clicked();
@@ -47,13 +48,18 @@ private slots:
     void on_seal_clicked();
     void on_unseal_clicked();
     void on_fullAccess_clicked();
+    void print();
+    void snapShot();
+    //void on_SerialFind_clicked();
+
+    void on_Start_clicked();
 
 private:
     Ui::MainWindow *ui;
     QSerialPort *port;
     QTimer *tmr;
     QWidget *widget;
-    QCustomPlot *customPlot;
+    QCustomPlot *customPlot, *customPlot2;
     QCPGraph *graphic, *graphic2;
     QFileDialog *fDialog;
     bool c_checked=false;
@@ -63,8 +69,13 @@ private:
     bool dat = true;
     bool serial = true;
     bool hasFile = false;
+    QString rest = "";
+    uint16_t cDate;
+    QDate aDate;
     double minElem(QVector<double> input);
     double maxElem(QVector<double> input);
+    QPixmap nPixmap;
+
 signals:
     void hasData(QList<QString> val);
     void savesettings(QString name);

@@ -32,7 +32,6 @@ void Port :: ConnectPort(void)
                 && thisPort.setFlowControl(QSerialPort::NoFlowControl)){
                     if (thisPort.isOpen()){
                         error_((SettingsPort.name+ " Opened!").toLocal8Bit());
-                        //WriteToPort("start");
                     }
                 } else {
                     thisPort.close();
@@ -42,7 +41,7 @@ void Port :: ConnectPort(void)
             thisPort.close();
             error_(thisPort.errorString().toLocal8Bit()+" Error opening");
         }
-        serial=false;
+        //serial=false;
     }
 }
 void Port::handleError(QSerialPort::SerialPortError error)
@@ -62,6 +61,7 @@ void  Port::DisconnectPort()
 void Port :: WriteToPort(QByteArray data)
 {
     if(thisPort.isOpen()){
+        qDebug()<<"data "<<data;
         thisPort.write(data);
         thisPort.write("\n");
         thisPort.flush();
@@ -74,14 +74,20 @@ void Port :: WriteToPort(QByteArray data)
 void Port :: ReadInPort()//Чтение данных из порта
 {
     QByteArray data;
-    while (thisPort.waitForReadyRead(200)){
-        data +=thisPort.readAll();
+    while (!thisPort.atEnd()){
+        data = thisPort.read(thisPort.bytesAvailable());
         int read_num = data.indexOf('\r');
         if (read_num > 0){
             data = data.left(read_num + 1);
-            qDebug()<<data;
-            emit outPort(data);
+            if(data.startsWith('@') && data.contains('#')){
+                emit outPort(data);
+                qDebug()<<data;
+            }else{
+                thisPort.clear(QSerialPort::AllDirections);
+            }
+
         }
     }
+    thisPort.clear(QSerialPort::AllDirections);
     data.clear();
 }
